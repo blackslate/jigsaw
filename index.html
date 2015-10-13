@@ -17,28 +17,27 @@
   context.lineTo(0, 50)
   context.lineTo(50, 0)
   context.closePath()
-
-  
+  context.clip()
 
   var imageObj = new Image()
   imageObj.onload = function() {
     context.drawImage(imageObj, 0, 0);
 
     var c=document.createElement('canvas');
-  var cx=c.getContext('2d');
+    var cx=c.getContext('2d');
 
-  // resize the new canvas to the size of the clipping area
-  c.width=100;
-  c.height=100;
-  cx.drawImage(canvas, 0,0,100,100, 0,0,100,100);
+    // resize the new canvas to the size of the clipping area
+    c.width=100;
+    c.height=100;
+    cx.drawImage(canvas, 0,0,100,100, 0,0,100,100);
 
-  // create a new Image() from the new canvas
-  var clippedImage=new Image();
-  clippedImage.onload=function(){
-    // append the new image to the page
-    document.body.appendChild(clippedImage);
-  }
-  clippedImage.src=c.toDataURL();
+    // create a new Image() from the new canvas
+    var clippedImage=new Image();
+    clippedImage.onload=function(){
+      // append the new image to the page
+      document.body.appendChild(clippedImage);
+    }
+    clippedImage.src=c.toDataURL();
   };
   imageObj.src = 'dragonr.png';
 </script>
