@@ -4,34 +4,62 @@
   <meta charset="utf-8">
   <title></title>
 <style>
+html {
+  height: 100%;
+}
 body {
   background-color: #ccc;
   margin: 0;
+  height: 100%;
+}
+div {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #333;
+}
+div:not(.complete) img{
+  -webkit-filter: drop-shadow(1px 1px 1px #333);
+  filter:         drop-shadow(1px 1px 1px rgb(51,51,51,0.5));
 }
 img {
-  /*margin: 1em;*/
-}
-canvas {
-  margin:0.1em;
+  position: absolute;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  top:0;
+  left:0;
 }
 </style>  
 </head>
 <body>
+<div></div>
 <script>
 ;(function (){
+  var body = document.body
+  var div = document.querySelector("div")
+
   var rowCount = 5
   var colCount = 5
-  var edgeList = []
-  var topsList = [] // Ensures that pieces interlock with the row above
+  var edgeList = [] // Ensures that no two edges are identical
+  var topsList = [] // Ensures that pieces fit with the row above
+  var piecesList = []
+  var groups = {}
+  var complete = false
  
   var width
   var height
   var neck
+  var layer = 1
+  var threshold = 100
 
-  var imageObj = new Image()
-  imageObj.onload = function() {
-    var imgWidth = imageObj.width
-    var imgHeight = imageObj.height
+  var img = new Image()
+  img.onload = function() {
+    var imgWidth = img.width
+    var imgHeight = img.height
     width = imgWidth / colCount
     height = imgHeight / rowCount
     neck = width / 6
@@ -39,10 +67,9 @@ canvas {
     createPuzzlePieces()
   };
 
-  imageObj.src = "squares.png" // "raven.png"
+  img.src = "raven.png"
 
   function createPuzzlePieces(me) {   
-    var piecesList = []
     var edge
       
     for(var row = 0; row < rowCount; row += 1) {
@@ -56,7 +83,6 @@ canvas {
       var context = canvas.getContext('2d');
       canvas.width = width + neck * 2.5
       canvas.height = height + neck * 2.5
-      //document.body.appendChild(canvas)
 
       context.beginPath()
       context.moveTo(neck, height + neck)
@@ -244,30 +270,29 @@ canvas {
       }
    
       function createImg() {
-        var frame = document.createElement('canvas')
-        var cadre = frame.getContext('2d');
-        var clippedImage = new Image()
-        var n = neck // * 1.5
-        var n3 = neck * 2
-        piecesList.push(clippedImage)
+        var piece = new Image()
+        piecesList.push(piece)
 
-        context.drawImage(imageObj, -col*width + n, -row*height + n)
+        context.drawImage(img, -col*width + neck, -row*height + neck)
 
-        clippedImage.onload = function(){
+        piece.onload = function(){
           // append the new image to the page
-          document.body.appendChild(clippedImage)
+          div.appendChild(piece)
+          piece.locX = -col*width
+          piece.locY = -row*height
+          piece.id = row+"_"+col
+          groups[piece.id] = [piece]
+
           context = null
           canvas = null       
         }
 
-        clippedImage.src = canvas.toDataURL()
+        piece.src = canvas.toDataURL()
       }
     }
 
     return piecesList
   }
-
-
 
   function randomEdge(topsList, column) {   
     var tilt
@@ -316,6 +341,121 @@ canvas {
     return edge
   }
   
+  ;(function play(){
+    body.ontouchstart = function (event) {
+      event.preventDefault()
+    }
+
+    div.onmousedown = div.ontouchstart = startDrag
+      
+    function startDrag(event) {
+      event.preventDefault() 
+      body.onmousemove = body.ontouchmove = drag
+      body.onmouseup = body.ontouchend = stopDrag
+
+      var target = event.target
+      if (target.nodeName.toLowerCase() !== "img") {
+        return
+      }
+
+      var pieces = groups[target.id]
+      var clickX = event.pageX
+      var clickY = event.pageY
+      var startXs = {}
+      var startYs = {}
+
+
+      ;(function setStartXAndY(){
+        var id
+        layer++
+        pieces.forEach(function (piece) {
+          id = piece.id
+          startXs[id] = piece.offsetLeft - clickX
+          startYs[id] = piece.offsetTop - clickY
+          piece.style.zIndex = layer
+        })
+      })()
+    
+      function drag(event) {      
+        var id
+        pieces.forEach(function (piece) {
+          id = piece.id
+          piece.style.left = startXs[id] + event.pageX + "px"
+          piece.style.top = startYs[id] + event.pageY + "px"
+        })
+      }
+    
+      function stopDrag(event) {
+        var targetRect = target.getBoundingClientRect()
+        var x = targetRect.left + target.locX
+        var y = targetRect.top + target.locY
+        var deltaX
+          , deltaY
+          , delta2
+
+        piecesList.forEach(function (piece) {
+          if (piece !== target) {
+            rect = piece.getBoundingClientRect()
+
+            if (intersects(rect, targetRect)) {
+              deltaX = rect.left + piece.locX - x
+              deltaY = rect.top + piece.locY - y
+              delta2 = deltaX * deltaX + deltaY * deltaY
+
+              if (delta2 < threshold) {
+                addToGroup(target, piece, deltaX, deltaY)
+              }
+            }
+          }
+
+          //piece.style.zIndex = 0
+        })
+
+        body.onmousemove = body.ontouchmove = null
+        body.onmouseup = body.ontouchend = null
+
+        function intersects(r1, r2) {
+          return !(r2.left > r1.right || 
+                   r2.right < r1.left || 
+                   r2.top > r1.bottom ||
+                   r2.bottom < r1.top)
+        }
+
+        function addToGroup(target, piece, deltaX, deltaY) {
+          var group1 = groups[piece.id]
+          var group2 = groups[target.id]
+          var left
+            , top
+
+          // Copy everything into group1, which becomes the shared array
+          // and snap the pieces to those of group1
+          group2.forEach(snapToGroup)
+          snapToGroup(target)
+
+          function snapToGroup(piece) {
+            if (group1.indexOf(piece) < 0) {
+              group1.push(piece)
+              groups[piece.id] = group1
+
+              piece.style.left = piece.offsetLeft + deltaX + "px"
+              piece.style.top = piece.offsetTop + deltaY + "px"
+            }
+          }
+
+          // The target has moved, but there may be more matches
+          targetRect = target.getBoundingClientRect()
+          x = targetRect.left + target.locX
+          y = targetRect.top + target.locY
+
+          if (group1.length === colCount * rowCount && !complete) {
+            // The puzzle is complete
+            complete = true
+            div.classList.add("complete")
+          }
+        }
+      }
+    }
+  })()
 })()
 </script>
 
