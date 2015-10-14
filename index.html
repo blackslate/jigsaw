@@ -44,30 +44,45 @@ img {
 
   var rowCount = 5
   var colCount = 5
+  var pieceCount = rowCount * colCount
   var edgeList = [] // Ensures that no two edges are identical
   var topsList = [] // Ensures that pieces fit with the row above
   var piecesList = []
+  var blankList = []
+  var imageList = []
   var groups = {}
+  var layer = 1
+  var threshold = 100
   var complete = false
+  var stillLoading = 2
  
   var width
   var height
   var neck
-  var layer = 1
-  var threshold = 100
 
-  var img = new Image()
-  img.onload = function() {
-    var imgWidth = img.width
-    var imgHeight = img.height
+  var white = new Image()
+  var source = new Image()
+
+  white.onload = source.onload = function checkIfBothAreLoaded() {
+    stillLoading -= 1
+    if (!stillLoading) {
+      createPuzzle()
+    }
+  }
+
+  function createPuzzle() {
+    var imgWidth = white.width
+    var imgHeight = white.height
     width = imgWidth / colCount
     height = imgHeight / rowCount
     neck = width / 6
 
     createPuzzlePieces()
+    setTimeout(placePiecesRandomly, 1)
   };
 
-  img.src = "raven.png"
+  white.src = "white.png"
+  source.src = "raven.png"
 
   function createPuzzlePieces(me) {   
     var edge
@@ -81,6 +96,7 @@ img {
     function createPuzzlePiece(row, col) {
       var canvas = document.createElement('canvas')
       var context = canvas.getContext('2d');
+
       canvas.width = width + neck * 2.5
       canvas.height = height + neck * 2.5
 
@@ -123,7 +139,7 @@ img {
       }
       context.clip()
 
-      createImg()
+      createImage()
 
       function downwardEdge(x0, height, edge) {
         // {
@@ -269,11 +285,15 @@ img {
         )
       }
    
-      function createImg() {
+      function createImage() {
+        var blank = new Image()
         var piece = new Image()
+        var image = new Image()
+        blankList.push(blank)
         piecesList.push(piece)
+        imageList.push(image)
 
-        context.drawImage(img, -col*width + neck, -row*height + neck)
+        context.drawImage(white, -col*width + neck, -row*height + neck)
 
         piece.onload = function(){
           // append the new image to the page
@@ -282,16 +302,25 @@ img {
           piece.locY = -row*height
           piece.id = row+"_"+col
           groups[piece.id] = [piece]
+          
 
-          context = null
-          canvas = null       
+          context.drawImage(source, -col*width + neck, -row*height + neck)
+
+          image.onload = function(){
+            context = null
+            canvas = null    
+            image.onload = null  
+            piece.onload = null
+            blank.onload = null 
+          }
+
+          image.src = canvas.toDataURL()
         }
 
+        blank.src = canvas.toDataURL()
         piece.src = canvas.toDataURL()
       }
     }
-
-    return piecesList
   }
 
   function randomEdge(topsList, column) {   
@@ -340,6 +369,72 @@ img {
 
     return edge
   }
+
+  function placePiecesRandomly() {
+    var width = body.offsetWidth
+    var height = body.offsetHeight
+    var ratio = width / height
+    var across
+      , down
+      , extra
+      , space
+      , random
+      , index
+      , piece
+
+    if (ratio > 2) {
+      across = 7; down = 3; extra = 4
+    } else if (ratio > 1.33) {
+      across = 6; down = 4; extra = 1
+    } else if (ratio > 0.75) {
+      across = 5; down = 5; extra = 0
+    } else if (ratio > 0.5) {
+      across = 4; down = 6; extra = 1
+    } else {
+      across = 3; down = 7; extra = 4
+    }
+
+    space = Math.min(width / (across + 2), height / (down + 2))
+    random = getRandomIndexArray()
+
+    for ( var row = 0; row < down; row += 1 ) {
+      for ( var col = 0; col < across; col += 1 ) {
+        placePiece()
+      }
+    }
+
+    for (var ii = 0; ii < extra; ii += 1) {
+      placePiece()
+    }
+
+    function placePiece() {
+      index = random.pop()
+      piece = piecesList[index]
+      piece.style.top = (row + Math.random()) * space + "px"
+      piece.style.left = (col + Math.random()) * space + "px"
+    }
+
+    function getRandomIndexArray() {
+      var array = []
+      for (var ii = 0; ii < pieceCount; ii += 1) {
+        array.push(ii)
+      }
+
+      var current = pieceCount
+        , swap
+        , random
+
+      while (current) {
+        random = Math.floor(Math.random() * current--);
+        swap = array[current];
+        array[current] = array[random];
+        array[random] = swap;
+      }
+
+      console.log(array)
+      return array
+    }
+  }
   
   ;(function play(){
     body.ontouchstart = function (event) {
@@ -349,14 +444,15 @@ img {
     div.onmousedown = div.ontouchstart = startDrag
       
     function startDrag(event) {
-      event.preventDefault() 
-      body.onmousemove = body.ontouchmove = drag
-      body.onmouseup = body.ontouchend = stopDrag
+      event.preventDefault()
 
       var target = event.target
       if (target.nodeName.toLowerCase() !== "img") {
         return
       }
+
+      body.onmousemove = body.ontouchmove = drag
+      body.onmouseup = body.ontouchend = stopDrag
 
       var pieces = groups[target.id]
       var clickX = event.pageX
@@ -394,16 +490,18 @@ img {
           , delta2
 
         piecesList.forEach(function (piece) {
-          if (piece !== target) {
-            rect = piece.getBoundingClientRect()
+            if (!complete) {
+            if (piece !== target) {
+              rect = piece.getBoundingClientRect()
 
-            if (intersects(rect, targetRect)) {
-              deltaX = rect.left + piece.locX - x
-              deltaY = rect.top + piece.locY - y
-              delta2 = deltaX * deltaX + deltaY * deltaY
+              if (intersects(rect, targetRect)) {
+                deltaX = rect.left + piece.locX - x
+                deltaY = rect.top + piece.locY - y
+                delta2 = deltaX * deltaX + deltaY * deltaY
 
-              if (delta2 < threshold) {
-                addToGroup(target, piece, deltaX, deltaY)
+                if (delta2 < threshold) {
+                  addToGroup(target, piece, deltaX, deltaY)
+                }
               }
             }
           }
@@ -426,11 +524,31 @@ img {
           var group2 = groups[target.id]
           var left
             , top
+            , groupCount
+            , opacity
 
           // Copy everything into group1, which becomes the shared array
           // and snap the pieces to those of group1
           group2.forEach(snapToGroup)
           snapToGroup(target)
+
+          groupCount = group1.length
+          opacity = groupCount / pieceCount / 5
+          
+          group1.forEach(refreshImage)
+
+          // The target has moved, but there may be more matches
+          targetRect = target.getBoundingClientRect()
+          x = targetRect.left + target.locX
+          y = targetRect.top + target.locY
+
+          if (groupCount === pieceCount && !complete) {
+            // The puzzle is complete
+            complete = true
+            opacity = 1
+            group1.forEach(refreshImage)
+            div.classList.add("complete")
+          }     
 
           function snapToGroup(piece) {
             if (group1.indexOf(piece) < 0) {
@@ -442,15 +560,24 @@ img {
             }
           }
 
-          // The target has moved, but there may be more matches
-          targetRect = target.getBoundingClientRect()
-          x = targetRect.left + target.locX
-          y = targetRect.top + target.locY
+          function refreshImage(piece) {
+            var canvas = document.createElement('canvas')
+            var context = canvas.getContext('2d');
+            var index = piecesList.indexOf(piece)
+            var blank = blankList[index]
+            var image = imageList[index]
+            var width = piece.width
+            var height = piece.height
 
-          if (group1.length === colCount * rowCount && !complete) {
-            // The puzzle is complete
-            complete = true
-            div.classList.add("complete")
+            canvas.width = width
+            canvas.height = height
+
+            context.globalAlpha = 1
+            context.drawImage(blank, 0, 0, width, height)
+            context.globalAlpha = opacity
+            context.drawImage(image, 0, 0, width, height)
+
+            piece.src = canvas.toDataURL()
           }
         }
       }
