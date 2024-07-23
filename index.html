@@ -23,7 +23,7 @@ div.piece {
   display: inline-block;
   width: fit-content;
   height: fit-content;
-  background: #f008;
+  background: transparent;
 }
 div:not(.complete) .piece img{
   -webkit-filter: drop-shadow(1px 1px 1px #333);
@@ -409,7 +409,7 @@ img {
       across = 3; down = 7; extra = 4
     }
 
-    space = Math.min(width / (across + 2), height / (down + 2))
+    space = Math.min(width / (across + 3), height / (down + 3))
     random = getRandomIndexArray()
 
     for ( var row = 0; row < down; row += 1 ) {
@@ -480,10 +480,10 @@ img {
       // ... and restrain them to the viewport
       const bodyWidth = body.offsetWidth
       const bodyHeight = body.offsetHeight
-      let maxX = 0
-      let minX = bodyWidth
-      let maxY = 0
-      let minY = bodyHeight
+      let minX = 0
+      let maxX = bodyWidth
+      let minY = 0
+      let maxY = bodyHeight
 
       console.log("bodyWidth:", bodyWidth, ", bodyHeight:", bodyHeight);
 
@@ -504,16 +504,16 @@ img {
           // Calculate the min/max values of pageX and pageY which
           // which will not move the whole block out of view
           console.log("left:", left, piece.offsetLeft);
-          const toLeft = 0 // + clickX
-          const toRight = bodyWidth - width //+ clickX
-          const toTop = 0 // + clickY
-          const toBottom = bodyHeight - height - 1 //+ clickY
+          const toLeft = clickX - left
+          const toRight = bodyWidth - width + clickX - left - 1
+          const toTop = clickY - top
+          const toBottom = bodyHeight - height + clickY - top - 1
 
           console.log({ toLeft, toRight, toTop, toBottom });
-          minX = toLeft
-          maxX = toRight
-          minY = toTop
-          maxY = toBottom
+          minX = Math.max(toLeft, minX)
+          maxX = Math.min(toRight, maxX)
+          minY = Math.max(toTop, minY)
+          maxY = Math.min(toBottom, maxY)
 
           id = piece.id
           startXs[id] = piece.offsetLeft - clickX
@@ -525,21 +525,13 @@ img {
       function drag(event) {
         var id
         const { pageX, pageY } = event
+        const x = Math.max(minX, Math.min( pageX, maxX))
+        const y = Math.max(minY, Math.min( pageY, maxY))
 
         pieces.forEach(function (piece) {
           id = piece.id
-          const newX = Math.max(
-            minX,
-            Math.min(
-              startXs[id] + pageX,
-              maxX
-          ))
-          const newY = Math.max(
-            minY,
-            Math.min(
-              startYs[id] + pageY,
-              maxY
-          ))
+          const newX = startXs[id] + x
+          const newY = startYs[id] + y
 
           piece.style.left = newX + "px"
           piece.style.top = newY + "px"
