@@ -2,7 +2,7 @@
 <html lang=en>
 <head>
   <meta charset="utf-8">
-  <title>Puzzle n° 17</title>
+  <title>Jigsaw</title>
 <style>
 html {
   height: 100%;
@@ -158,7 +158,7 @@ img {
         var y4 = ym + neck * 2      // foot of slant
 
         context.bezierCurveTo(
-          x0, y0                  // no handle on corner
+          x0, y0                   // no handle on corner
         , x1, y1 - edge.angle     // base of neck
         , x0, y1                  // upper neck point
         )
@@ -224,11 +224,11 @@ img {
         var xm = x0 + (width - x0) / 2 // adjusted with tilt
         var x1 = xm - neck / 2   // top of neck
         var x2 = xm + neck / 2   // bottom of neck
-        var x3 = xm - neck * 2   // top of slant
-        var x4 = xm + neck * 2   // foot of slant
+        var x3 = xm - neck * 2      // top of slant
+        var x4 = xm + neck * 2     // foot of slant
 
         context.bezierCurveTo(
-          width, y0               // no handle on corner
+          width, y0              // no handle on corner
         , x2 - edge.angle, y1     // base of neck
         , x2, y0                  // upper neck point
         )

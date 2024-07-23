@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>Puzzle n° 17</title>
+
 <style>
 html {
   height: 100%;
@@ -34,11 +35,41 @@ img {
   left:0;
   -webkit-transform: translateZ(0);
 }
-</style>  
+</style>
+
 </head>
+
 <body>
+
 <div></div>
+
 <script>
+  /* TODO:
+   * 1.  Optimize size for available area
+   * 2.  Resize/reposition if window area changes
+   * 3.  Alternate lugs and slots randomly
+   * 4.  Define centre of puzzle piece for rotation
+   * 5.  Crop image to square centred on centre of rotation
+   * 6.  Define offsets relative to centre of rotation
+   * 7.  Fix placement bug when pieces snap together 
+   * 8.  Fix lag on touchscreen
+   * 9.  Allow arbitrary image
+   * 10. Optional: randomize initial rotation of pieces
+   * 11.         + Long press rotates set by increments of 90°
+   * 12. Optional: desaturated background image
+   * 13. Optional: progressive opacity of image
+   * 14. Optional: Crossfade to alternate image
+   * 15. Optional: shortcuts for crossfade
+   *               (e.g. white to raven, greyscale to saturated)
+   * 16. Modularize and use classes
+   * 17. Play snap-together sound
+   * 18. Prevent pieces being dragged outside play area
+   * 19. Allow player to zoom
+   *     - Maximize view of piece
+   *     - Maximize view of joined/selected pieces
+   * 20. Optional: hide non-edge pieces
+   * 21. Allow arbitrary number of pieces
+   */ 
 ;(function (){
   var body = document.body
   var div = document.querySelector("div")
@@ -53,7 +84,7 @@ img {
   var imageList = []
   var groups = {}
   var layer = 1
-  var threshold = 400
+  var threshold = 900
   var complete = false
   var stillLoading = 2
  
@@ -434,11 +465,32 @@ img {
   }
   
   ;(function play(){
+    var pieces
+    var clickX
+    var clickY
+    var startXs
+    var startYs
+    var group1
+    var group2
+    var opacity
+
+
     body.ontouchstart = function (event) {
       event.preventDefault()
     }
 
+
     div.onmousedown = div.ontouchstart = startDrag
+
+
+    function page(type, event) {
+      if (event.touches) {
+        event = event.touches[0]
+      }
+
+      return event["client" + type]
+    }
+
       
     function startDrag(event) {
       event.preventDefault()
@@ -451,11 +503,11 @@ img {
       body.onmousemove = body.ontouchmove = drag
       body.onmouseup = body.ontouchend = stopDrag
 
-      var pieces = groups[target.id]
-      var clickX = event.pageX
-      var clickY = event.pageY
-      var startXs = {}
-      var startYs = {}
+      pieces = groups[target.id]
+      clickX = event.pageX
+      clickY = event.pageY
+      startXs = {}
+      startYs = {}
 
 
       ;(function setStartXAndY(){
@@ -468,117 +520,129 @@ img {
           piece.style.zIndex = layer
         })
       })()
+    }
     
-      function drag(event) {      
-        var id
-        pieces.forEach(function (piece) {
-          id = piece.id
-          piece.style.left = startXs[id] + event.pageX + "px"
-          piece.style.top = startYs[id] + event.pageY + "px"
-        })
-      }
-    
-      function stopDrag(event) {
-        var targetRect = target.getBoundingClientRect()
-        var x = targetRect.left + target.locX
-        var y = targetRect.top + target.locY
-        var deltaX
-          , deltaY
-          , delta2
 
-        piecesList.forEach(function (piece) {
-          if (!complete) {
-            if (piece !== target) {
-              rect = piece.getBoundingClientRect()
+    function drag(event) {      
+      var id
+      pieces.forEach(function (piece) {
+        id = piece.id
+        piece.style.left = startXs[id] + page("X", event) + "px"
+        piece.style.top = startYs[id] + page("Y", event) + "px"
+      })
+    }
 
-              if (intersects(rect, targetRect)) {
-                deltaX = rect.left + piece.locX - x
-                deltaY = rect.top + piece.locY - y
-                delta2 = deltaX * deltaX + deltaY * deltaY
 
-                if (delta2 < threshold) {
-                  addToGroup(target, piece, deltaX, deltaY)
-                }
-              }
+    function checkSnapToPiece(dropped, droppedRect, x, y, piece) {
+      var deltaX
+        , deltaY
+        , delta2
+
+      if (!complete) {
+        if (piece !== dropped) {
+          rect = piece.getBoundingClientRect()
+
+          if (intersects(rect, droppedRect)) {
+            deltaX = rect.left + piece.locX - x
+            deltaY = rect.top + piece.locY - y
+            delta2 = deltaX * deltaX + deltaY * deltaY
+
+            if (delta2 < threshold) {
+              addToGroup(dropped, piece, deltaX, deltaY)
             }
-          }
-
-          //piece.style.zIndex = 0
-        })
-
-        body.onmousemove = body.ontouchmove = null
-        body.onmouseup = body.ontouchend = null
-
-        function intersects(r1, r2) {
-          return !(r2.left > r1.right || 
-                   r2.right < r1.left || 
-                   r2.top > r1.bottom ||
-                   r2.bottom < r1.top)
-        }
-
-        function addToGroup(target, piece, deltaX, deltaY) {
-          var group1 = groups[piece.id]
-          var group2 = groups[target.id]
-          var left
-            , top
-            , groupCount
-            , opacity
-
-          // Copy everything into group1, which becomes the shared array
-          // and snap the pieces to those of group1
-          group2.forEach(snapToGroup)
-          snapToGroup(target)
-
-          groupCount = group1.length
-          opacity = groupCount / pieceCount / 5
-          
-          group1.forEach(refreshImage)
-
-          // The target has moved, but there may be more matches
-          targetRect = target.getBoundingClientRect()
-          x = targetRect.left + target.locX
-          y = targetRect.top + target.locY
-
-          if (groupCount === pieceCount && !complete) {
-            // The puzzle is complete
-            complete = true
-            opacity = 1
-            group1.forEach(refreshImage)
-            div.style.backgroundColor = "#fff"
-            div.classList.add("complete")
-          }     
-
-          function snapToGroup(piece) {
-            if (group1.indexOf(piece) < 0) {
-              group1.push(piece)
-              groups[piece.id] = group1
-
-              piece.style.left = piece.offsetLeft + deltaX + "px"
-              piece.style.top = piece.offsetTop + deltaY + "px"
-            }
-          }
-
-          function refreshImage(piece) {
-            var canvas = document.createElement('canvas')
-            var context = canvas.getContext('2d');
-            var index = piecesList.indexOf(piece)
-            var blank = blankList[index]
-            var image = imageList[index]
-            var width = piece.width
-            var height = piece.height
-
-            canvas.width = width
-            canvas.height = height
-
-            context.globalAlpha = 1
-            context.drawImage(blank, 0, 0, width, height)
-            context.globalAlpha = opacity
-            context.drawImage(image, 0, 0, width, height)
-
-            piece.src = canvas.toDataURL()
           }
         }
       }
+    }
+
+
+    function checkDroppedPiece(dropped) {
+      var droppedRect = dropped.getBoundingClientRect()
+      var x = droppedRect.left + dropped.locX
+      var y = droppedRect.top + dropped.locY
+
+      piecesList.forEach(function(piece) {
+        checkSnapToPiece(dropped, droppedRect, x, y, piece)
+      })
+    }
+  
+
+    function stopDrag(event) {
+      pieces.forEach(checkDroppedPiece)
+
+      body.onmousemove = body.ontouchmove = null
+      body.onmouseup = body.ontouchend = null
+    }
+
+
+    function intersects(r1, r2) {
+      return !(r2.left > r1.right || 
+               r2.right < r1.left || 
+               r2.top > r1.bottom ||
+               r2.bottom < r1.top)
+    }
+
+
+    function addToGroup(target, piece, deltaX, deltaY) {
+      group1 = groups[piece.id]
+      group2 = groups[target.id]
+      var left
+        , top
+        , groupCount
+
+      // Copy everything into group1, which becomes the shared array
+      // and snap the pieces to those of group1
+      group2.forEach(snapToGroup, deltaX, deltaY)
+      snapToGroup(target, deltaX, deltaY)
+
+      groupCount = group1.length
+      opacity = groupCount / pieceCount / 5
+      
+      group1.forEach(refreshImage)
+
+      // The target has moved, but there may be more matches
+      targetRect = target.getBoundingClientRect()
+      x = targetRect.left + target.locX
+      y = targetRect.top + target.locY
+
+      if (groupCount === pieceCount && !complete) {
+        // The puzzle is complete
+        complete = true
+        opacity = 1
+        group1.forEach(refreshImage)
+        div.style.backgroundColor = "#fff"
+        div.classList.add("complete")
+      }
+    } 
+
+    function snapToGroup(piece, deltaX, deltaY) {
+      if (group1.indexOf(piece) < 0) {
+        group1.push(piece)
+        groups[piece.id] = group1
+
+        piece.style.left = piece.offsetLeft + deltaX + "px"
+        piece.style.top = piece.offsetTop + deltaY + "px"
+      }
+    }
+
+    function refreshImage(piece) {
+      var canvas = document.createElement('canvas')
+      var context = canvas.getContext('2d');
+      var index = piecesList.indexOf(piece)
+      var blank = blankList[index]
+      var image = imageList[index]
+      var width = piece.width
+      var height = piece.height
+
+      canvas.width = width
+      canvas.height = height
+
+      context.globalAlpha = 1
+      context.drawImage(blank, 0, 0, width, height)
+      context.globalAlpha = opacity
+      context.drawImage(image, 0, 0, width, height)
+
+      piece.src = canvas.toDataURL()
     }
   })() 
 
