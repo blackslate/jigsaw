@@ -438,7 +438,7 @@ img {
       event.preventDefault()
     }
 
-    div.onmousedown = div.ontouchstart = startDrag
+    div.onpointerdown = startDrag
       
     function startDrag(event) {
       event.preventDefault()
@@ -448,8 +448,8 @@ img {
         return
       }
 
-      body.onmousemove = body.ontouchmove = drag
-      body.onmouseup = body.ontouchend = stopDrag
+      body.onpointermove = drag
+      body.onpointerup = stopDrag
 
       var pieces = groups[target.id]
       var clickX = event.pageX
@@ -506,8 +506,8 @@ img {
           //piece.style.zIndex = 0
         })
 
-        body.onmousemove = body.ontouchmove = null
-        body.onmouseup = body.ontouchend = null
+        body.onpointermove = null
+        body.onpointerup = null
 
         function intersects(r1, r2) {
           return !(r2.left > r1.right || 
