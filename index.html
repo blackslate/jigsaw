@@ -300,13 +300,11 @@ img {
         var piece = new Image()
         var image = new Image()
         blankList.push(blank)
-        // piecesList.push(piece)
         imageList.push(image)
 
         context.drawImage(white, -col*width + neck, -row*height + neck)
 
         piece.onload = function(){
-          // append the new image to the page
           const holder = document.createElement("div")
           const id = row+"_"+col
           holder.id = id
@@ -470,8 +468,6 @@ img {
 
       var clickX = event.pageX
       var clickY = event.pageY
-      console.log("click:", clickX, clickY);
-
 
       // Get ready to move all the pieces in the group...
       var pieces = groups[target.id]
@@ -484,9 +480,6 @@ img {
       let maxX = bodyWidth
       let minY = 0
       let maxY = bodyHeight
-
-      console.log("bodyWidth:", bodyWidth, ", bodyHeight:", bodyHeight);
-
 
       ;(function setStartXAndY(){
         var id
@@ -501,15 +494,13 @@ img {
             height
           } = piece.getBoundingClientRect()
 
-          // Calculate the min/max values of pageX and pageY which
+          // Calculate the min/max values of pageX and pageY
           // which will not move the whole block out of view
-          console.log("left:", left, piece.offsetLeft);
           const toLeft = clickX - left
           const toRight = bodyWidth - width + clickX - left - 1
           const toTop = clickY - top
           const toBottom = bodyHeight - height + clickY - top - 1
 
-          console.log({ toLeft, toRight, toTop, toBottom });
           minX = Math.max(toLeft, minX)
           maxX = Math.min(toRight, maxX)
           minY = Math.max(toTop, minY)
@@ -563,7 +554,7 @@ img {
             }
           }
 
-          //piece.style.zIndex = 0
+          piece.style.zIndex = 0
         })
 
         body.onpointermove = null
@@ -584,8 +575,8 @@ img {
             , groupCount
             , opacity
 
-          // Copy everything into group1, which becomes the shared array
-          // and snap the pieces to those of group1
+          // Copy everything into group2, which becomes the 
+          // shared array and snap the pieces to those of group1
           group2.forEach(snapToGroup)
           snapToGroup(target)
 
