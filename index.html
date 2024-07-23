@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang=en>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <title>Puzzle n° 17</title>
@@ -18,12 +18,18 @@ div {
   height: 100%;
   background-color: #333;
 }
-div:not(.complete) img{
+div.piece {
+  position: absolute;
+  display: inline-block;
+  width: fit-content;
+  height: fit-content;
+  background: transparent;
+}
+div:not(.complete) .piece img{
   -webkit-filter: drop-shadow(1px 1px 1px #333);
   filter:         drop-shadow(1px 1px 1px rgb(51,51,51,0.5));
 }
 img {
-  position: absolute;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -khtml-user-select: none;
@@ -33,8 +39,10 @@ img {
   top:0;
   left:0;
   -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  pointer-events: none;
 }
-</style>  
+</style>
 </head>
 <body>
 <div></div>
@@ -288,19 +296,24 @@ img {
         var piece = new Image()
         var image = new Image()
         blankList.push(blank)
-        piecesList.push(piece)
+        // piecesList.push(piece)
         imageList.push(image)
 
         context.drawImage(white, -col*width + neck, -row*height + neck)
 
         piece.onload = function(){
           // append the new image to the page
-          div.appendChild(piece)
-          piece.locX = -col*width
-          piece.locY = -row*height
-          piece.id = row+"_"+col
-          groups[piece.id] = [piece]
-          
+          const holder = document.createElement("div")
+          const id = row+"_"+col
+          holder.id = id
+          holder.classList.add("piece")
+          piecesList.push(holder)
+
+          div.appendChild(holder)
+          holder.appendChild(piece)
+          holder.locX = -col*width
+          holder.locY = -row*height
+          groups[id] = [holder]
 
           context.drawImage(source, -col*width + neck, -row*height + neck)
 
@@ -444,19 +457,27 @@ img {
       event.preventDefault()
 
       var target = event.target
-      if (target.nodeName.toLowerCase() !== "img") {
+      if (!target.querySelector("& > img")) {
         return
       }
 
       body.onpointermove = drag
       body.onpointerup = stopDrag
 
-      var pieces = groups[target.id]
       var clickX = event.pageX
       var clickY = event.pageY
+
+      // Get ready to move all the pieces in the group...
+      var pieces = groups[target.id]
       var startXs = {}
       var startYs = {}
-
+      // ... and restrain them to the viewport
+      // const bodyWidth = body.offsetWidth
+      // const bodyHeight = body.offsetHeight
+      // let maxX = 0
+      // let minX = bodyWidth
+      // let maxY = 0
+      // let minY = bodyHeight
 
       ;(function setStartXAndY(){
         var id
@@ -559,9 +580,10 @@ img {
           }
 
           function refreshImage(piece) {
+            var index = piecesList.indexOf(piece)
+            piece = piece.querySelector("img")
             var canvas = document.createElement('canvas')
             var context = canvas.getContext('2d');
-            var index = piecesList.indexOf(piece)
             var blank = blankList[index]
             var image = imageList[index]
             var width = piece.width
